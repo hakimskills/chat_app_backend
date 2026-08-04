@@ -18,6 +18,10 @@ class User extends Authenticatable
         'email',
         'password',
         'email_verified_at',
+        'phone_number',
+        'avatar',
+        'bio',
+        'last_seen_at',
     ];
 
     protected $hidden = [
@@ -29,6 +33,7 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'last_seen_at' => 'datetime',
             'password' => 'hashed',
         ];
     }
