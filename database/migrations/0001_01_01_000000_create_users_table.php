@@ -19,6 +19,15 @@ return new class extends Migration
             // never set a password. Password-based login checks for this explicitly.
             $table->string('password')->nullable();
 
+            // Profile fields
+            $table->string('phone_number')->nullable()->unique();
+            $table->string('avatar')->nullable();
+            $table->string('bio', 150)->nullable();
+
+            // Powers "last seen" / online presence later — updated via a
+            // heartbeat middleware or broadcasting presence channel.
+            $table->timestamp('last_seen_at')->nullable();
+
             $table->rememberToken();
             $table->timestamps();
         });
