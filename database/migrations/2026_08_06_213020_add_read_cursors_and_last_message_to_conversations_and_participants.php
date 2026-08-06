@@ -36,3 +36,4 @@ return new class extends Migration
             $table->dropConstrainedForeignId('last_read_message_id');
         });
     }
+};
