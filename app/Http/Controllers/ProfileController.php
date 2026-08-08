@@ -2,12 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
+use App\Http\Requests\UpdateAvatarRequest;
 use App\Http\Requests\UpdateProfileRequest;
 use App\Http\Resources\UserResource;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 
@@ -20,6 +21,46 @@ class ProfileController extends Controller
     {
         $user = $request->user();
         $user->update($request->validated());
+
+        return response()->json([
+            'user' => new UserResource($user->fresh()),
+        ]);
+    }
+
+    /**
+     * Upload/replace the authenticated user's avatar. Stores the file on
+     * the 'public' disk under avatars/{userId}/, deletes the previous
+     * avatar file (if any) to avoid orphaned files accumulating.
+     */
+    public function uploadAvatar(UpdateAvatarRequest $request): JsonResponse
+    {
+        $user = $request->user();
+
+        if ($user->avatar) {
+            Storage::disk('public')->delete($user->avatar);
+        }
+
+        $path = $request->file('avatar')->store("avatars/{$user->id}", 'public');
+
+        $user->update(['avatar' => $path]);
+
+        return response()->json([
+            'user' => new UserResource($user->fresh()),
+        ]);
+    }
+
+    /**
+     * Remove the authenticated user's avatar entirely (revert to
+     * initials-only display on the client).
+     */
+    public function deleteAvatar(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        if ($user->avatar) {
+            Storage::disk('public')->delete($user->avatar);
+            $user->update(['avatar' => null]);
+        }
 
         return response()->json([
             'user' => new UserResource($user->fresh()),
@@ -48,6 +89,10 @@ class ProfileController extends Controller
                     'password' => ['The provided password is incorrect.'],
                 ]);
             }
+        }
+
+        if ($user->avatar) {
+            Storage::disk('public')->delete($user->avatar);
         }
 
         // Revoke every token, on every device — there's no account left
