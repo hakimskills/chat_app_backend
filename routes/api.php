@@ -23,6 +23,8 @@ Route::prefix('auth')->group(function () {
 Route::middleware('auth:sanctum')->group(function () {
     Route::put('profile', [ProfileController::class, 'update']);
     Route::delete('profile', [ProfileController::class, 'destroy']);
+    Route::post('profile/avatar', [ProfileController::class, 'uploadAvatar']);
+    Route::delete('profile/avatar', [ProfileController::class, 'deleteAvatar']);
 
     Route::get('conversations', [ConversationController::class, 'index']);
     Route::post('conversations', [ConversationController::class, 'store']);
