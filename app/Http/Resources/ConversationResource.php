@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\Storage;
 
 class ConversationResource extends JsonResource
 {
@@ -14,12 +15,12 @@ class ConversationResource extends JsonResource
         // For a private chat, the "display name/avatar" is the OTHER
         // person — group chats use their own name/avatar directly.
         $displayName = $this->name;
-        $displayAvatar = $this->avatar;
+        $displayAvatar = $this->resolveAvatarUrl($this->avatar);
 
         if ($this->isPrivate() && $this->relationLoaded('users')) {
             $other = $this->users->firstWhere('id', '!=', $authId);
             $displayName = $other?->name;
-            $displayAvatar = $other?->avatar;
+            $displayAvatar = $this->resolveAvatarUrl($other?->avatar);
         }
 
         $participant = $this->relationLoaded('participants')
@@ -38,17 +39,25 @@ class ConversationResource extends JsonResource
             'unread_count' => $participant?->unreadCount() ?? 0,
             'updated_at' => $this->updated_at,
 
-            // Only send the full participant list for groups — private
-            // chats already convey the other person via name/avatar above.
             'participants' => $this->when(
                 $this->isGroup() && $this->relationLoaded('users'),
                 fn () => $this->users->map(fn ($u) => [
                     'id' => $u->id,
                     'name' => $u->name,
                     'username' => $u->username,
-                    'avatar' => $u->avatar,
+                    'avatar' => $this->resolveAvatarUrl($u->avatar),
                 ])
             ),
         ];
+    }
+
+    /**
+     * Convert a stored relative path (e.g. "avatars/2/xyz.jpg") into a
+     * full, absolute URL the client can actually load. Returns null
+     * untouched — a user/group with no avatar stays null.
+     */
+    private function resolveAvatarUrl(?string $path): ?string
+    {
+        return $path ? Storage::disk('public')->url($path) : null;
     }
 }

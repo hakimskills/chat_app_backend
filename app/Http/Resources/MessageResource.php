@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\Storage;
 
 class MessageResource extends JsonResource
 {
@@ -17,7 +18,7 @@ class MessageResource extends JsonResource
                 'id' => $this->sender->id,
                 'name' => $this->sender->name,
                 'username' => $this->sender->username,
-                'avatar' => $this->sender->avatar,
+               'avatar' => $this->sender->avatar ? Storage::disk('public')->url($this->sender->avatar) : null,
             ] : null),
 
             // Lets the Flutter UI align bubbles left/right without
