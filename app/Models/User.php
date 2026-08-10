@@ -55,4 +55,13 @@ public function sentMessages(): HasMany
 {
     return $this->hasMany(Message::class, 'sender_id');
 }
+public function sentFriendRequests(): HasMany
+{
+    return $this->hasMany(Friendship::class, 'sender_id');
+}
+
+public function receivedFriendRequests(): HasMany
+{
+    return $this->hasMany(Friendship::class, 'recipient_id');
+}
 }
