@@ -2,8 +2,10 @@
 
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\ConversationController;
+use App\Http\Controllers\FriendshipController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('auth')->group(function () {
@@ -26,6 +28,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('profile/avatar', [ProfileController::class, 'uploadAvatar']);
     Route::delete('profile/avatar', [ProfileController::class, 'deleteAvatar']);
 
+    Route::get('users/search', [UserController::class, 'search']);
+
     Route::get('conversations', [ConversationController::class, 'index']);
     Route::post('conversations', [ConversationController::class, 'store']);
     Route::get('conversations/{conversation}', [ConversationController::class, 'show']);
@@ -35,4 +39,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('conversations/{conversation}/messages', [MessageController::class, 'store']);
     Route::put('conversations/{conversation}/messages/{message}', [MessageController::class, 'update']);
     Route::delete('conversations/{conversation}/messages/{message}', [MessageController::class, 'destroy']);
+
+    Route::get('friends', [FriendshipController::class, 'index']);
+    Route::get('friends/requests', [FriendshipController::class, 'incomingRequests']);
+    Route::get('friends/requests/sent', [FriendshipController::class, 'sentRequests']);
+    Route::post('friends/requests', [FriendshipController::class, 'store']);
+    Route::post('friends/requests/{friendship}/accept', [FriendshipController::class, 'accept']);
+    Route::delete('friends/requests/{friendship}', [FriendshipController::class, 'destroyRequest']);
+    Route::delete('friends/{friendship}', [FriendshipController::class, 'destroy']);
+    Route::post('friends/block/{user}', [FriendshipController::class, 'block']);
+    Route::delete('friends/block/{friendship}', [FriendshipController::class, 'unblock']);
 });
