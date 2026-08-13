@@ -14,14 +14,12 @@ class StoreMessageRequest extends FormRequest
 
     public function rules(): array
     {
-        // Text-only for now — attachments (image/video/file) get their own
-        // upload endpoint later, which will relax the 'body' requirement.
         return [
-            'body' => ['required', 'string', 'max:5000'],
-            'type' => ['sometimes', 'in:text'],
+            // Either a body or an image is required — never both empty,
+            // but a captioned image (both present) is fine too.
+            'body' => ['required_without:image', 'nullable', 'string', 'max:5000'],
+            'image' => ['required_without:body', 'nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:8192'],
 
-            // Must reference a message that exists AND belongs to this
-            // same conversation — prevents replying across conversations.
             'reply_to_message_id' => [
                 'nullable',
                 'integer',

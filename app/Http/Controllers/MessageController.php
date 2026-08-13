@@ -17,10 +17,6 @@ class MessageController extends Controller
 {
     use EnsuresConversationParticipant;
 
-    /**
-     * Paginated messages, oldest-to-newest within each page — pass
-     * ?before=<message_id> to load older messages (infinite scroll up).
-     */
     public function index(Request $request, Conversation $conversation): AnonymousResourceCollection
     {
         $this->authorizeParticipant($conversation, $request->user());
@@ -38,24 +34,41 @@ class MessageController extends Controller
         return MessageResource::collection($messages);
     }
 
+    /**
+     * Handles both plain text messages and image messages (multipart
+     * with an 'image' file field, optionally with a 'body' caption).
+     */
     public function store(StoreMessageRequest $request, Conversation $conversation): JsonResponse
     {
         $user = $request->user();
         $this->authorizeParticipant($conversation, $user);
 
         $validated = $request->validated();
+        $hasImage = $request->hasFile('image');
 
-        $message = DB::transaction(function () use ($conversation, $user, $validated) {
+        $message = DB::transaction(function () use ($conversation, $user, $validated, $request, $hasImage) {
             $message = $conversation->messages()->create([
                 'sender_id' => $user->id,
-                'type' => $validated['type'] ?? 'text',
-                'body' => $validated['body'],
+                'type' => $hasImage ? 'image' : 'text',
+                'body' => $validated['body'] ?? null,
                 'reply_to_message_id' => $validated['reply_to_message_id'] ?? null,
             ]);
 
+            if ($hasImage) {
+                $file = $request->file('image');
+                $path = $file->store("message_attachments/{$conversation->id}", 'public');
+
+                $message->attachments()->create([
+                    'url' => $path,
+                    'type' => 'image',
+                    'file_name' => $file->getClientOriginalName(),
+                    'mime_type' => $file->getClientMimeType(),
+                    'size_bytes' => $file->getSize(),
+                ]);
+            }
+
             $conversation->update(['last_message_id' => $message->id]);
 
-            // The sender has, by definition, "read" their own message.
             $conversation->participants()
                 ->where('user_id', $user->id)
                 ->update(['last_read_message_id' => $message->id]);
@@ -63,7 +76,7 @@ class MessageController extends Controller
             return $message;
         });
 
-        $message->load(['sender', 'replyTo.sender']);
+        $message->load(['sender', 'replyTo.sender', 'attachments']);
 
         return response()->json([
             'message_data' => new MessageResource($message),
@@ -84,7 +97,7 @@ class MessageController extends Controller
         ]);
 
         return response()->json([
-            'message_data' => new MessageResource($message->fresh(['sender', 'replyTo.sender'])),
+            'message_data' => new MessageResource($message->fresh(['sender', 'replyTo.sender', 'attachments'])),
         ]);
     }
 
@@ -96,7 +109,7 @@ class MessageController extends Controller
         abort_if($message->conversation_id !== $conversation->id, 404);
         abort_if($message->sender_id !== $user->id, 403, 'You can only delete your own messages.');
 
-        $message->delete(); // soft delete — see softDeletes() on the messages table
+        $message->delete();
 
         return response()->json(['message' => 'Message deleted.']);
     }
