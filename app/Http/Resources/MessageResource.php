@@ -18,11 +18,9 @@ class MessageResource extends JsonResource
                 'id' => $this->sender->id,
                 'name' => $this->sender->name,
                 'username' => $this->sender->username,
-               'avatar' => $this->sender->avatar ? Storage::disk('public')->url($this->sender->avatar) : null,
+                'avatar' => $this->sender->avatar ? Storage::disk('public')->url($this->sender->avatar) : null,
             ] : null),
 
-            // Lets the Flutter UI align bubbles left/right without
-            // comparing IDs itself.
             'is_mine' => $this->sender_id === $request->user()?->id,
 
             'type' => $this->type,
@@ -36,10 +34,10 @@ class MessageResource extends JsonResource
 
             'attachments' => $this->whenLoaded('attachments', fn () => $this->attachments->map(fn ($a) => [
                 'id' => $a->id,
-                'url' => $a->url,
+                'url' => Storage::disk('public')->url($a->url),
                 'type' => $a->type,
                 'file_name' => $a->file_name,
-                'thumbnail_url' => $a->thumbnail_url,
+                'thumbnail_url' => $a->thumbnail_url ? Storage::disk('public')->url($a->thumbnail_url) : null,
             ])),
 
             'edited_at' => $this->edited_at,
