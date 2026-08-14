@@ -13,9 +13,6 @@ use Illuminate\Validation\ValidationException;
 
 class FriendshipController extends Controller
 {
-    /**
-     * Accepted friends only.
-     */
     public function index(Request $request): AnonymousResourceCollection
     {
         $friendships = Friendship::involving($request->user()->id)
@@ -26,9 +23,6 @@ class FriendshipController extends Controller
         return FriendshipResource::collection($friendships);
     }
 
-    /**
-     * Pending requests sent TO the authenticated user (need a response).
-     */
     public function incomingRequests(Request $request): AnonymousResourceCollection
     {
         $friendships = Friendship::where('recipient_id', $request->user()->id)
@@ -40,9 +34,6 @@ class FriendshipController extends Controller
         return FriendshipResource::collection($friendships);
     }
 
-    /**
-     * Pending requests the authenticated user has sent, awaiting a response.
-     */
     public function sentRequests(Request $request): AnonymousResourceCollection
     {
         $friendships = Friendship::where('sender_id', $request->user()->id)
@@ -55,10 +46,21 @@ class FriendshipController extends Controller
     }
 
     /**
-     * Send a friend request by user_id or username. If the target user
-     * already sent *us* a pending request, this auto-accepts it instead
-     * of creating a duplicate.
+     * Users the authenticated user has blocked. block() always stores
+     * the blocker as sender_id, so this is a simple, unambiguous query —
+     * it never shows people who blocked YOU, only people YOU blocked.
      */
+    public function blockedUsers(Request $request): AnonymousResourceCollection
+    {
+        $friendships = Friendship::where('sender_id', $request->user()->id)
+            ->where('status', 'blocked')
+            ->with(['sender', 'recipient'])
+            ->latest()
+            ->get();
+
+        return FriendshipResource::collection($friendships);
+    }
+
     public function store(StoreFriendRequestRequest $request): JsonResponse
     {
         $authUser = $request->user();
@@ -87,15 +89,12 @@ class FriendshipController extends Controller
                 abort(403, 'This action is not allowed.');
             }
 
-            // Existing status is 'pending'.
             if ($existing->sender_id === $authUser->id) {
                 throw ValidationException::withMessages([
                     'recipient_id' => ['Friend request already sent.'],
                 ]);
             }
 
-            // They already requested us — sending our own request now
-            // just accepts theirs, avoiding a duplicate row.
             $existing->update(['status' => 'accepted']);
 
             return response()->json([
@@ -115,9 +114,6 @@ class FriendshipController extends Controller
         ], 201);
     }
 
-    /**
-     * Accept an incoming pending request. Only the recipient may accept.
-     */
     public function accept(Request $request, Friendship $friendship): JsonResponse
     {
         $authId = $request->user()->id;
@@ -132,11 +128,6 @@ class FriendshipController extends Controller
         ]);
     }
 
-    /**
-     * Decline an incoming request, or cancel one you sent — either the
-     * sender or the recipient of a still-pending request may remove it.
-     * The row is deleted so a fresh request can be sent again later.
-     */
     public function destroyRequest(Request $request, Friendship $friendship): JsonResponse
     {
         $authId = $request->user()->id;
@@ -152,9 +143,6 @@ class FriendshipController extends Controller
         return response()->json(['message' => 'Request removed.']);
     }
 
-    /**
-     * Unfriend — removes an accepted friendship. Either party can do this.
-     */
     public function destroy(Request $request, Friendship $friendship): JsonResponse
     {
         $authId = $request->user()->id;
@@ -170,11 +158,6 @@ class FriendshipController extends Controller
         return response()->json(['message' => 'Friend removed.']);
     }
 
-    /**
-     * Block a user — find-or-create the pair row and force it to
-     * 'blocked'. Only the blocker (sender_id) can later unblock, so a
-     * blocked user can't just re-request or unblock themselves.
-     */
     public function block(Request $request, User $user): JsonResponse
     {
         $authUser = $request->user();
