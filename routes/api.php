@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\ConversationController;
+use App\Http\Controllers\ConversationParticipantController;
 use App\Http\Controllers\FriendshipController;
 use App\Http\Controllers\MessageController;
 use App\Http\Controllers\ProfileController;
@@ -39,6 +40,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('conversations/{conversation}/messages', [MessageController::class, 'store']);
     Route::put('conversations/{conversation}/messages/{message}', [MessageController::class, 'update']);
     Route::delete('conversations/{conversation}/messages/{message}', [MessageController::class, 'destroy']);
+
+    Route::get('conversations/{conversation}/participants', [ConversationParticipantController::class, 'index']);
+    Route::post('conversations/{conversation}/participants', [ConversationParticipantController::class, 'store']);
+    Route::delete('conversations/{conversation}/participants/{user}', [ConversationParticipantController::class, 'destroy']);
+    Route::put('conversations/{conversation}/participants/{user}/role', [ConversationParticipantController::class, 'updateRole']);
 
     Route::get('friends', [FriendshipController::class, 'index']);
     Route::get('friends/requests', [FriendshipController::class, 'incomingRequests']);
