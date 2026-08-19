@@ -35,8 +35,8 @@ class MessageController extends Controller
     }
 
     /**
-     * Handles both plain text messages and image messages (multipart
-     * with an 'image' file field, optionally with a 'body' caption).
+     * Handles plain text, image, and now audio (voice) messages —
+     * whichever of 'body' / 'image' / 'audio' is present in the request.
      */
     public function store(StoreMessageRequest $request, Conversation $conversation): JsonResponse
     {
@@ -45,11 +45,14 @@ class MessageController extends Controller
 
         $validated = $request->validated();
         $hasImage = $request->hasFile('image');
+        $hasAudio = $request->hasFile('audio');
 
-        $message = DB::transaction(function () use ($conversation, $user, $validated, $request, $hasImage) {
+        $type = $hasAudio ? 'audio' : ($hasImage ? 'image' : 'text');
+
+        $message = DB::transaction(function () use ($conversation, $user, $validated, $request, $hasImage, $hasAudio, $type) {
             $message = $conversation->messages()->create([
                 'sender_id' => $user->id,
-                'type' => $hasImage ? 'image' : 'text',
+                'type' => $type,
                 'body' => $validated['body'] ?? null,
                 'reply_to_message_id' => $validated['reply_to_message_id'] ?? null,
             ]);
@@ -64,6 +67,20 @@ class MessageController extends Controller
                     'file_name' => $file->getClientOriginalName(),
                     'mime_type' => $file->getClientMimeType(),
                     'size_bytes' => $file->getSize(),
+                ]);
+            }
+
+            if ($hasAudio) {
+                $file = $request->file('audio');
+                $path = $file->store("message_attachments/{$conversation->id}", 'public');
+
+                $message->attachments()->create([
+                    'url' => $path,
+                    'type' => 'audio',
+                    'file_name' => $file->getClientOriginalName(),
+                    'mime_type' => $file->getClientMimeType(),
+                    'size_bytes' => $file->getSize(),
+                    'duration_seconds' => $validated['duration_seconds'] ?? null,
                 ]);
             }
 

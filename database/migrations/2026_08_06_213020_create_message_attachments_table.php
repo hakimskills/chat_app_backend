@@ -19,6 +19,12 @@ return new class extends Migration
             $table->unsignedBigInteger('size_bytes')->nullable();
             $table->string('thumbnail_url')->nullable();
 
+            // Voice message length in seconds — measured client-side while
+            // recording and sent alongside the file, since deriving it
+            // server-side would need an audio-processing library. Only
+            // populated for type = 'audio'.
+            $table->unsignedInteger('duration_seconds')->nullable();
+
             $table->timestamps();
         });
     }
