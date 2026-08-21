@@ -38,6 +38,7 @@ class MessageResource extends JsonResource
                 'type' => $a->type,
                 'file_name' => $a->file_name,
                 'thumbnail_url' => $a->thumbnail_url ? Storage::disk('public')->url($a->thumbnail_url) : null,
+                'duration_seconds' => $a->duration_seconds,
             ])),
 
             'edited_at' => $this->edited_at,
